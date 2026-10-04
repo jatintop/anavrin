@@ -1,0 +1,429 @@
+{
+ "royal-threads-OT001058.jpg": {
+  "vendorName": "THE ROYAL THREADS",
+  "vendorGstin": "29ABHPC1966B1ZX",
+  "docType": "quotation",
+  "billNo": "OT001058",
+  "billDate": "2026-09-18",
+  "buyer": null,
+  "lines": [
+   {
+    "description": "DURGA",
+    "hsn": "540730",
+    "qty": 3,
+    "rate": 795,
+    "discountPct": 0,
+    "amount": 2385
+   },
+   {
+    "description": "VISCOS ELEPHANT",
+    "hsn": "540730",
+    "qty": 1,
+    "rate": 1495,
+    "discountPct": 0,
+    "amount": 1495
+   },
+   {
+    "description": "VISCOS CHEX",
+    "hsn": "540730",
+    "qty": 2,
+    "rate": 1495,
+    "discountPct": 0,
+    "amount": 2990
+   },
+   {
+    "description": "VISCOS BROCADE",
+    "hsn": "540730",
+    "qty": 2,
+    "rate": 1495,
+    "discountPct": 0,
+    "amount": 2990
+   },
+   {
+    "description": "RACHIL",
+    "hsn": "540730",
+    "qty": 1,
+    "rate": 695,
+    "discountPct": 0,
+    "amount": 695
+   },
+   {
+    "description": "DHANUSHREE",
+    "hsn": "540730",
+    "qty": 3,
+    "rate": 695,
+    "discountPct": 0,
+    "amount": 2085
+   },
+   {
+    "description": "VAM SILK",
+    "hsn": "540730",
+    "qty": 2,
+    "rate": 1295,
+    "discountPct": 0,
+    "amount": 2590
+   },
+   {
+    "description": "NANDITA",
+    "hsn": "540730",
+    "qty": 3,
+    "rate": 595,
+    "discountPct": 0,
+    "amount": 1785
+   },
+   {
+    "description": "AKSHITA",
+    "hsn": "540730",
+    "qty": 1,
+    "rate": 495,
+    "discountPct": 0,
+    "amount": 495
+   },
+   {
+    "description": "VISCOS BRASO",
+    "hsn": "540730",
+    "qty": 1,
+    "rate": 595,
+    "discountPct": 0,
+    "amount": 595
+   },
+   {
+    "description": "VISCOS",
+    "hsn": "540730",
+    "qty": 1,
+    "rate": 1995,
+    "discountPct": 0,
+    "amount": 1995
+   }
+  ],
+  "totalQty": 20,
+  "subtotal": 20100,
+  "cgst": 502.54,
+  "sgst": 502.54,
+  "igst": null,
+  "roundOff": -0.08,
+  "grandTotal": 21105,
+  "handwrittenNotes": [
+   {
+    "text": "-5000 = 16105",
+    "amount": -5000
+   }
+  ],
+  "paidStamp": true,
+  "warnings": []
+ },
+ "popular-silk-PS-2713.jpg": {
+  "vendorName": "POPULAR SILK",
+  "vendorGstin": "29AAIFP2926Q1ZH",
+  "docType": "tax_invoice",
+  "billNo": "PS-2713/2026-27",
+  "billDate": "2026-06-16",
+  "buyer": null,
+  "lines": [
+   {
+    "description": "SAREE (FINISH) SWANIKA",
+    "hsn": "540754",
+    "qty": 3,
+    "rate": 645,
+    "discountPct": null,
+    "amount": 1935
+   },
+   {
+    "description": "SAREE (FINISH) JANKI 4518",
+    "hsn": "540754",
+    "qty": 2,
+    "rate": 820,
+    "discountPct": null,
+    "amount": 1640
+   },
+   {
+    "description": "MADHUVAN - J 5020",
+    "hsn": "540754",
+    "qty": 5,
+    "rate": 880,
+    "discountPct": null,
+    "amount": 4400
+   },
+   {
+    "description": "VRT KUM KUM GEORJJETT SELF 4815",
+    "hsn": "540754",
+    "qty": 2,
+    "rate": 560,
+    "discountPct": null,
+    "amount": 1120
+   },
+   {
+    "description": "SAREE (FINISH) MANGALAM",
+    "hsn": "540754",
+    "qty": 3,
+    "rate": 795,
+    "discountPct": null,
+    "amount": 2385
+   },
+   {
+    "description": "PSJ UNIVERSAL SILK",
+    "hsn": "540754",
+    "qty": 3,
+    "rate": 1440,
+    "discountPct": null,
+    "amount": 4320
+   }
+  ],
+  "totalQty": 18,
+  "subtotal": 15800,
+  "cgst": 395.01,
+  "sgst": 395.01,
+  "igst": null,
+  "roundOff": null,
+  "grandTotal": 16590.02,
+  "handwrittenNotes": [],
+  "paidStamp": false,
+  "warnings": []
+ },
+ "royal-threads-OT000716.png": {
+  "vendorName": "THE ROYAL THREADS",
+  "vendorGstin": "29ABHPC1966B1ZX",
+  "docType": "quotation",
+  "billNo": "OT000716",
+  "billDate": "2026-08-07",
+  "buyer": null,
+  "lines": [
+   {
+    "description": "ABL;A",
+    "hsn": "540730",
+    "qty": 3,
+    "rate": 595,
+    "discountPct": 0,
+    "amount": 1785
+   },
+   {
+    "description": "KADI GGT",
+    "hsn": "540730",
+    "qty": 2,
+    "rate": 1495,
+    "discountPct": 0,
+    "amount": 2990
+   },
+   {
+    "description": "MUL AJRAK",
+    "hsn": "540730",
+    "qty": 8,
+    "rate": 795,
+    "discountPct": 0,
+    "amount": 6360
+   },
+   {
+    "description": "VISCOS",
+    "hsn": "540730",
+    "qty": 1,
+    "rate": 1495,
+    "discountPct": 0,
+    "amount": 1495
+   },
+   {
+    "description": "VISCOS MAZE",
+    "hsn": "540730",
+    "qty": 3,
+    "rate": 2495,
+    "discountPct": 0,
+    "amount": 7485
+   }
+  ],
+  "totalQty": 17,
+  "subtotal": 20115,
+  "cgst": 502.89,
+  "sgst": 502.89,
+  "igst": null,
+  "roundOff": 0.22,
+  "grandTotal": 21121,
+  "handwrittenNotes": [
+   {
+    "text": "-3270 = 17851",
+    "amount": -3270
+   }
+  ],
+  "paidStamp": true,
+  "warnings": []
+ },
+ "royal-threads-RE006629.png": {
+  "vendorName": "THE ROYAL THREADS",
+  "vendorGstin": "29ABHPC1966B1ZX",
+  "docType": "tax_invoice",
+  "billNo": "RE006629",
+  "billDate": "2026-07-01",
+  "buyer": null,
+  "lines": [
+   {
+    "description": "MUL VISCOS",
+    "hsn": "540730",
+    "qty": 2,
+    "rate": 695,
+    "discountPct": null,
+    "amount": 1390
+   },
+   {
+    "description": "MUL AJRAK",
+    "hsn": "540730",
+    "qty": 2,
+    "rate": 795,
+    "discountPct": null,
+    "amount": 1590
+   },
+   {
+    "description": "KUMKUM",
+    "hsn": "540730",
+    "qty": 3,
+    "rate": 495,
+    "discountPct": null,
+    "amount": 1485
+   },
+   {
+    "description": "KENDRA SILK",
+    "hsn": "540730",
+    "qty": 2,
+    "rate": 2295,
+    "discountPct": null,
+    "amount": 4590
+   },
+   {
+    "description": "KNOTS",
+    "hsn": "540730",
+    "qty": 4,
+    "rate": 595,
+    "discountPct": null,
+    "amount": 2380
+   },
+   {
+    "description": "VIJAYAKUMARI",
+    "hsn": "540730",
+    "qty": 5,
+    "rate": 495,
+    "discountPct": null,
+    "amount": 2475
+   },
+   {
+    "description": "KADI GEORGT",
+    "hsn": "540730",
+    "qty": 2,
+    "rate": 1495,
+    "discountPct": null,
+    "amount": 2990
+   },
+   {
+    "description": "IKKAT",
+    "hsn": "540730",
+    "qty": 2,
+    "rate": 595,
+    "discountPct": null,
+    "amount": 1190
+   },
+   {
+    "description": "ABLA",
+    "hsn": "540730",
+    "qty": 2,
+    "rate": 595,
+    "discountPct": null,
+    "amount": 1190
+   },
+   {
+    "description": "SRIDEVI",
+    "hsn": "540730",
+    "qty": 2,
+    "rate": 495,
+    "discountPct": null,
+    "amount": 990
+   },
+   {
+    "description": "LINEN KATHA",
+    "hsn": "540730",
+    "qty": 3,
+    "rate": 795,
+    "discountPct": null,
+    "amount": 2385
+   },
+   {
+    "description": "BLS",
+    "hsn": "540730",
+    "qty": 1,
+    "rate": 795,
+    "discountPct": null,
+    "amount": 795
+   }
+  ],
+  "totalQty": 30,
+  "subtotal": 23450,
+  "cgst": 586.27,
+  "sgst": 586.27,
+  "igst": null,
+  "roundOff": 0.46,
+  "grandTotal": 24623,
+  "handwrittenNotes": [
+   {
+    "text": "-1985 = 22638",
+    "amount": -1985
+   }
+  ],
+  "paidStamp": false,
+  "warnings": []
+ },
+ "mahapragya-1612.png": {
+  "vendorName": "MAHAPRAGYA SILK PALACE",
+  "vendorGstin": "29AAGPC8712P1Z9",
+  "docType": "tax_invoice",
+  "billNo": "26-27/1612",
+  "billDate": "2026-07-21",
+  "buyer": "5% Local Urp Sales",
+  "lines": [
+   {
+    "description": "D.No-8125",
+    "hsn": "540782",
+    "qty": 2,
+    "rate": 2195,
+    "discountPct": null,
+    "amount": 4390
+   },
+   {
+    "description": "Masak Kali Saree",
+    "hsn": "540782",
+    "qty": 2,
+    "rate": 2295,
+    "discountPct": null,
+    "amount": 4590
+   },
+   {
+    "description": "S14080",
+    "hsn": "540782",
+    "qty": 1,
+    "rate": 1895,
+    "discountPct": null,
+    "amount": 1895
+   },
+   {
+    "description": "NS-1023",
+    "hsn": "540782",
+    "qty": 2,
+    "rate": 1195,
+    "discountPct": null,
+    "amount": 2390
+   },
+   {
+    "description": "SAREE",
+    "hsn": "540782",
+    "qty": 3,
+    "rate": 1195,
+    "discountPct": null,
+    "amount": 3585
+   }
+  ],
+  "totalQty": 10,
+  "subtotal": 16850,
+  "cgst": 421.26,
+  "sgst": 421.26,
+  "igst": null,
+  "roundOff": 0.48,
+  "grandTotal": 17693,
+  "handwrittenNotes": [],
+  "paidStamp": false,
+  "warnings": []
+ }
+}

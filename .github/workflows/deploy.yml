@@ -1,0 +1,51 @@
+# Every push to main: run the tests, make sure apps-script/Code.gs matches the server code,
+# build the app and publish it to https://jatintop.github.io/anavrin/
+name: Test and deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Unit + server tests
+        run: npm test
+      - name: Build app and Apps Script code
+        run: npm run build
+      - name: Check apps-script/Code.gs is up to date
+        run: |
+          git diff --exit-code apps-script/Code.gs || {
+            echo "::error::apps-script/Code.gs is out of date. Run 'npm run build' and commit it, then paste it into Apps Script."
+            exit 1
+          }
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
