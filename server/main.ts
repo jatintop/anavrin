@@ -5,10 +5,11 @@ import { BILL_PROMPT } from '../src/lib/extract/prompt'
 import { applyOp, type Envelope, type Op, type Tables } from '../src/lib/ops'
 import { buildPurchase } from '../src/lib/purchase'
 import { DEFAULT_SETTINGS, DEFAULT_TYPES, DEFAULT_VENDORS } from '../src/data/seed'
-import type { AppUser, Item, Purchase, PurchaseDraft, Settings } from '../src/data/types'
+import type { AppUser, Expense, Item, Purchase, PurchaseDraft, SaleLine, Settings } from '../src/data/types'
 import {
-  ALL_TABLES, COUNTERS, ITEMS, LINES, LOG, PEOPLE, PURCHASES, SETTINGS, TYPES, VENDORS,
-  itemFromRec, lineFromRec, lineToRec, purchaseFromRec, purchaseToRec, recordToRow, rowToRecord, type Table,
+  ALL_TABLES, COUNTERS, EXPENSES, ITEMS, LINES, LOG, PEOPLE, PURCHASES, SALE_LINES, SALES, SETTINGS, TYPES, VENDORS,
+  itemFromRec, lineFromRec, lineToRec, purchaseFromRec, purchaseToRec, recordToRow, rowToRecord,
+  saleFromRec, saleLineToRec, saleToRec, type Table,
 } from './schema'
 
 type Rec = Record<string, unknown>
@@ -81,12 +82,28 @@ export function readState(): Tables {
       return purchaseFromRec(r, ls.map(({ purchaseId: _p, lineNo: _n, ...l }) => l))
     }),
     items: readTable(ITEMS).map(itemFromRec),
+    sales: readSales(),
+    expenses: readTable(EXPENSES).map((r) => ({ ...(r as unknown as Expense), deleted: r.deleted === true })),
   }
+}
+
+function readSales() {
+  const bySale = new Map<string, (SaleLine & { lineNo: number })[]>()
+  readTable(SALE_LINES).forEach((r) => {
+    const { saleId, ...l } = r as unknown as SaleLine & { saleId: string; lineNo: number }
+    bySale.set(saleId, [...(bySale.get(saleId) ?? []), l])
+  })
+  return readTable(SALES).map((r) => {
+    const ls = (bySale.get(String(r.id)) ?? []).sort((a, b) => a.lineNo - b.lineNo)
+    return saleFromRec(r, ls.map(({ lineNo: _n, ...l }) => l))
+  })
 }
 
 const TOUCHES: Record<Op['t'], (keyof Tables)[]> = {
   saveUser: ['users'], saveVendor: ['vendors'], deleteVendor: ['vendors'], saveType: ['types'], deleteType: ['types'],
   saveSettings: ['settings'], setPurchaseDeleted: ['purchases', 'items'], updateItems: ['items'],
+  saveSale: ['sales', 'items'], setSaleDeleted: ['sales', 'items'], settleSale: ['sales'],
+  saveExpense: ['expenses'], setExpenseDeleted: ['expenses'],
 }
 
 function writeTables(s: Tables, which: Set<keyof Tables>) {
@@ -96,6 +113,11 @@ function writeTables(s: Tables, which: Set<keyof Tables>) {
   if (which.has('settings')) writeAll(SETTINGS, [s.settings as unknown as Rec])
   if (which.has('purchases')) writeAll(PURCHASES, s.purchases.map(purchaseToRec))
   if (which.has('items')) writeAll(ITEMS, s.items as unknown as Rec[])
+  if (which.has('sales')) {
+    writeAll(SALES, s.sales.map(saleToRec))
+    writeAll(SALE_LINES, s.sales.flatMap((x) => x.lines.map((l, i) => saleLineToRec(x.id, l, i))))
+  }
+  if (which.has('expenses')) writeAll(EXPENSES, s.expenses as unknown as Rec[])
 }
 
 function loggedIds(): Set<string> {
@@ -115,6 +137,12 @@ function summarize(op: Op): string {
     case 'deleteVendor': return op.id
     case 'deleteType': return op.code
     case 'saveSettings': return JSON.stringify(op.s)
+    case 'saveSale': return `${op.sale.id} ${op.sale.kind} ₹${op.sale.total} ${op.sale.payment}${op.sale.customer ? ` · ${op.sale.customer}` : ''} — ${op.sale.lines.map((l) => l.itemId).join(', ')}`
+    case 'setSaleDeleted': return `${op.id} ${op.deleted ? 'cancelled' : 'restored'}`
+    case 'settleSale': return `${op.id} paid by ${op.payment} on ${op.on}`
+    case 'saveExpense': return `${op.e.id} ${op.e.category} ₹${op.e.amount}${op.e.note ? ` · ${op.e.note}` : ''}`
+    case 'setExpenseDeleted': return `${op.id} ${op.deleted ? 'deleted' : 'restored'}`
+    default: return ''
   }
 }
 
@@ -127,6 +155,7 @@ export function applyOps(envs: Envelope[]): { applied: string[]; state: Tables }
   for (const e of envs) {
     applied.push(e.opId)
     if (done.has(e.opId)) continue
+    if (!TOUCHES[e.op.t]) throw new Error(`This server doesn’t know the change “${e.op.t}”. Paste the latest Code.gs into Apps Script and deploy a new version.`)
     s = applyOp(s, e)
     TOUCHES[e.op.t].forEach((k) => touched.add(k))
     done.add(e.opId)

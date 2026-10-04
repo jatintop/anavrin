@@ -63,7 +63,7 @@ export function DemoBanner() {
   if (repo.mode === 'demo') {
     return (
       <div className="demo-banner">
-        <span className="grow"><b>Demo</b> Data stays on this device. Two of your sample bills are already entered.</span>
+        <span className="grow"><b>Demo</b> Data stays on this device. Two sample bills and a few sales are already entered.</span>
         {!__DEMO__ && <button className="btn small" onClick={exitDemo}>Exit demo · enter family key</button>}
       </div>
     )

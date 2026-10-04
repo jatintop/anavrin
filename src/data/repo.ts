@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useSyncExternalStore } from 'react'
 import type { ExtractedBill } from '../lib/bill'
 import type { Connection } from './connection'
-import type { AppUser, DataState, Item, Purchase, PurchaseDraft, SareeType, Settings, Vendor } from './types'
+import type { AppUser, DataState, Expense, Item, PayMethod, Purchase, PurchaseDraft, Sale, SareeType, Settings, Vendor } from './types'
 import { DEFAULT_SETTINGS } from './seed'
 
 export interface AuthInfo {
@@ -29,6 +29,14 @@ export interface Repo {
   savePurchase(d: PurchaseDraft, by: AppUser): Promise<Purchase>
   setPurchaseDeleted(id: string, deleted: boolean, by: AppUser): Promise<void>
   updateItems(ids: string[], patch: Partial<Pick<Item, 'price' | 'status' | 'type' | 'design'>>, by: AppUser): Promise<void>
+  /** a new stall or family sale; its sarees are marked sold. Works offline. */
+  saveSale(s: Sale, by: AppUser): Promise<void>
+  /** cancel (or bring back) a sale; cancelling puts its sarees back in stock */
+  setSaleDeleted(id: string, deleted: boolean, by: AppUser): Promise<void>
+  /** a pending sale has been paid */
+  settleSale(id: string, payment: Exclude<PayMethod, 'pending'>, on: string, by: AppUser): Promise<void>
+  saveExpense(e: Expense, by: AppUser): Promise<void>
+  setExpenseDeleted(id: string, deleted: boolean, by: AppUser): Promise<void>
   savePhoto(blob: Blob): Promise<string>
   photoUrl(ref: string): Promise<string>
   resetDemo?(): Promise<void>
@@ -39,7 +47,7 @@ export interface Repo {
 }
 
 export const EMPTY: DataState = {
-  ready: false, users: [], vendors: [], types: [], settings: DEFAULT_SETTINGS, purchases: [], items: [],
+  ready: false, users: [], vendors: [], types: [], settings: DEFAULT_SETTINGS, purchases: [], items: [], sales: [], expenses: [],
 }
 
 export const RepoContext = createContext<Repo | null>(null)

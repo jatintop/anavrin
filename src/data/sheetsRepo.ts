@@ -11,6 +11,9 @@ import type { AppUser, DataState, Purchase, PurchaseDraft } from './types'
 interface Cache { server: Tables | null; outbox: Envelope[]; lastSync: number | null; sheetUrl?: string }
 
 const ME_KEY = 'anavrin-me'
+const OUTDATED = 'The Google Sheet server code is older than the app. Paste the latest apps-script/Code.gs into Apps Script and deploy a new version (see README). Sales and expenses are kept on this phone until then.'
+/** Fill in tables an older server doesn't send yet. */
+const withDefaults = (t: Tables): Tables => ({ ...t, sales: t.sales ?? [], expenses: t.expenses ?? [] })
 const CACHE_KEY = 'sheet-cache'
 const lsGet = (k: string) => { try { return localStorage.getItem(k) } catch { return null } }
 const lsSet = (k: string, v: string | null) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v) } catch { /* blocked */ } }
@@ -74,7 +77,7 @@ export function createSheetsRepo(conn: Connection): Repo {
     if (!cache.server) {
       snap = { ...EMPTY, ready: loaded && !!error, error: loaded && error ? `${error} Connect to the internet once so the app can load your data.` : undefined, sync }
     } else {
-      snap = { ...applyOps(cache.server, cache.outbox), ready: true, sync, sheetUrl: cache.sheetUrl }
+      snap = { ...applyOps(withDefaults(cache.server), cache.outbox), ready: true, sync, sheetUrl: cache.sheetUrl }
     }
     listeners.forEach((l) => l(snap))
   }
@@ -94,9 +97,9 @@ export function createSheetsRepo(conn: Connection): Repo {
         const r = await api<{ state: Tables; sheetUrl: string }>({ action: 'all' })
         cache = { ...cache, server: r.state, sheetUrl: r.sheetUrl, lastSync: Date.now() }
       }
-      error = undefined
+      error = cache.server?.sales ? undefined : OUTDATED
     } catch (e) {
-      error = (e as Error).message
+      error = cache.server && !cache.server.sales ? OUTDATED : (e as Error).message
     } finally {
       syncing = false
       await persist()
@@ -145,6 +148,11 @@ export function createSheetsRepo(conn: Connection): Repo {
     saveSettings: (s) => enqueue({ t: 'saveSettings', s }, me()),
     setPurchaseDeleted: (id, deleted, by) => enqueue({ t: 'setPurchaseDeleted', id, deleted }, by.id),
     updateItems: (ids, patch, by) => enqueue({ t: 'updateItems', ids, patch }, by.id),
+    saveSale: (sale, by) => enqueue({ t: 'saveSale', sale }, by.id),
+    setSaleDeleted: (id, deleted, by) => enqueue({ t: 'setSaleDeleted', id, deleted }, by.id),
+    settleSale: (id, payment, on, by) => enqueue({ t: 'settleSale', id, payment, on }, by.id),
+    saveExpense: (e, by) => enqueue({ t: 'saveExpense', e }, by.id),
+    setExpenseDeleted: (id, deleted, by) => enqueue({ t: 'setExpenseDeleted', id, deleted }, by.id),
 
     // Saree numbers come from the sheet, so saving a bill needs internet (reading it does too).
     async savePurchase(d: PurchaseDraft, by: AppUser): Promise<Purchase> {

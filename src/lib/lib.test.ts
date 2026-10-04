@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import golden from '../../golden/expected.json'
 import { checkBill, normalizeBill, toIsoDate, toNum, unitCost, suggestedAdjustment, hasErrors } from './bill'
-import { itemId, parseItemQuery, purchaseId, saleId, yymm } from './ids'
+import { itemId, nextSeq, parseItemQuery, purchaseId, saleId, yymm } from './ids'
+import { nextFreeId } from './ops'
+import { applyDiscount, spreadTotal } from './sale'
 import { compareBills, similar } from './extract/compare'
 
 const g = golden as Record<string, unknown>
@@ -86,5 +88,25 @@ describe('golden comparison', () => {
   it('a perfect read scores 100%', () => {
     const b = normalizeBill(g['mahapragya-1612.png'])
     expect(compareBills(b, b).every((r) => r.ok)).toBe(true)
+  })
+})
+
+describe('selling', () => {
+  it('spreads a discounted total over the sarees, in whole rupees that add up', () => {
+    expect(spreadTotal([1350, 1350], 2500)).toEqual([1250, 1250])
+    const p = spreadTotal([1000, 1450, 699], 2833)
+    expect(p.reduce((a, b) => a + b, 0)).toBe(2833)
+    expect(spreadTotal([0, 0], 1001)).toEqual([501, 500])
+  })
+  it('applies stall discounts', () => {
+    expect(applyDiscount(1450, { kind: 'pct', v: 10 })).toBe(1305)
+    expect(applyDiscount(150, { kind: 'off', v: 200 })).toBe(0)
+    expect(applyDiscount(1450, { kind: 'final', v: 1200 })).toBe(1200)
+  })
+  it('numbers sales per person and moves past a number another phone already used', () => {
+    expect(nextSeq(['S-261004-J01', 'S-261004-J02', 'S-261004-P05', 'S-261003-J09'], 'S-261004-J')).toBe(3)
+    expect(nextSeq([], 'E-2610-J')).toBe(1)
+    expect(nextFreeId('S-261004-J01', new Set(['S-261004-J01', 'S-261004-J02']))).toBe('S-261004-J03')
+    expect(nextFreeId('F-2610-J99', new Set(['F-2610-J99']))).toBe('F-2610-J100')
   })
 })

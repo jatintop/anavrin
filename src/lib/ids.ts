@@ -48,3 +48,10 @@ export const todayIso = () => {
   const d = new Date()
   return `${d.getFullYear()}-${pad(d.getMonth() + 1, 2)}-${pad(d.getDate(), 2)}`
 }
+
+/** Next running number for IDs that start with `prefix` (e.g. "S-261004-J"), from the ones already made. */
+export function nextSeq(ids: string[], prefix: string): number {
+  let max = 0
+  for (const id of ids) if (id.startsWith(prefix)) max = Math.max(max, Number(id.slice(prefix.length)) || 0)
+  return max + 1
+}
