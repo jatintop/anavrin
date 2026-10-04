@@ -6,7 +6,8 @@ import type { Repo } from './data/repo'
 import { createDemoRepo } from './data/demoRepo'
 import { loadConnection } from './data/connection'
 import { createSheetsRepo } from './data/sheetsRepo'
-import { Connect, demoChosen } from './screens/Connect'
+import { Connect } from './screens/Connect'
+import { demoChosen } from './data/demoMode'
 
 const root = createRoot(document.getElementById('root')!)
 
