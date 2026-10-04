@@ -11,7 +11,8 @@ import type { AppUser, DataState, Purchase, PurchaseDraft } from './types'
 interface Cache { server: Tables | null; outbox: Envelope[]; lastSync: number | null; sheetUrl?: string }
 
 const ME_KEY = 'anavrin-me'
-const OUTDATED = 'The Google Sheet server code is older than the app. Paste the latest apps-script/Code.gs into Apps Script and deploy a new version (see README). Sales and expenses are kept on this phone until then.'
+const DEPLOY_HINT = 'In Apps Script, paste the latest apps-script/Code.gs, then Deploy → Manage deployments → ✏️ → Version: New version → Deploy (not “New deployment”, which makes a different URL).'
+const OUTDATED = `The Google Sheet server code is older than the app. ${DEPLOY_HINT} Sales and expenses are kept on this phone until then.`
 /** Fill in tables an older server doesn't send yet. */
 const withDefaults = (t: Tables): Tables => ({ ...t, sales: t.sales ?? [], expenses: t.expenses ?? [] })
 const CACHE_KEY = 'sheet-cache'
@@ -99,7 +100,9 @@ export function createSheetsRepo(conn: Connection): Repo {
       }
       error = cache.server?.sales ? undefined : OUTDATED
     } catch (e) {
-      error = cache.server && !cache.server.sales ? OUTDATED : (e as Error).message
+      const msg = (e as Error).message
+      // The last data came from an older server; say so, but keep the real error visible.
+      error = cache.server && !cache.server.sales ? `${msg} — the server code may be older than the app. ${DEPLOY_HINT}` : msg
     } finally {
       syncing = false
       await persist()
