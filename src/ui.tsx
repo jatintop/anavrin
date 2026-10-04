@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useData, useMe, useRepo } from './data/repo'
+import { exitDemo } from './data/demoMode'
 import type { ItemStatus } from './data/types'
 import { STATUS_LABEL } from './data/types'
 
@@ -62,7 +63,8 @@ export function DemoBanner() {
   if (repo.mode === 'demo') {
     return (
       <div className="demo-banner">
-        <b>Demo</b> Data stays on this device. Two of your sample bills are already entered.
+        <span className="grow"><b>Demo</b> Data stays on this device. Two sample bills and a few sales are already entered.</span>
+        {!__DEMO__ && <button className="btn small" onClick={exitDemo}>Exit demo · enter family key</button>}
       </div>
     )
   }

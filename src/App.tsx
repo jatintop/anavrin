@@ -8,7 +8,9 @@ import { NewPurchase } from './screens/NewPurchase'
 import { Pricing } from './screens/Pricing'
 import { Stock } from './screens/Stock'
 import { Settings } from './screens/Settings'
-import { ComingSoon } from './screens/ComingSoon'
+import { Stall } from './screens/Stall'
+import { Dues, Family } from './screens/Family'
+import { Expenses } from './screens/Expenses'
 import { SignIn } from './screens/SignIn'
 
 export default function App({ repo }: { repo: Repo }) {
@@ -57,9 +59,10 @@ function Gate() {
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/stock" element={<Stock />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/stall" element={<ComingSoon title="Stall" phase="3" text="Fast sale entry at the stall: type or scan the saree ID, the price fills in, tap a discount, tap UPI / Cash / Pending, done. Works without internet." />} />
-          <Route path="/family" element={<ComingSoon title="Friends & Family" phase="4" text="Pick the person and the saree ID, enter the price and discount, mark paid or pending. Pending amounts collect in one Dues list." />} />
-          <Route path="/expenses" element={<ComingSoon title="Expenses" phase="4" text="Date, amount and type of expense (stall rent, travel, packing…), with an optional receipt photo." />} />
+          <Route path="/stall" element={<Stall />} />
+          <Route path="/family" element={<Family />} />
+          <Route path="/dues" element={<Dues />} />
+          <Route path="/expenses" element={<Expenses />} />
           <Route path="*" element={<Home />} />
         </Routes>
       </HashRouter>

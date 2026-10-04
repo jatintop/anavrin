@@ -8,7 +8,7 @@ import { makeGas } from './gas-fake'
 import { normalizeBill, taxTotal } from '../src/lib/bill'
 import { draftLinesFromBill } from '../src/lib/purchase'
 import { DEFAULT_TYPES, DEFAULT_VENDORS } from '../src/data/seed'
-import type { DataState, PurchaseDraft } from '../src/data/types'
+import type { DataState, PurchaseDraft, Sale } from '../src/data/types'
 import type { Envelope } from '../src/lib/ops'
 
 let code = ''
@@ -45,7 +45,7 @@ const env = (op: Envelope['op'], opId = Math.random().toString(36).slice(2)): En
 
 describe('setup', () => {
   it('creates the tabs, seeds lists, removes the blank sheet', () => {
-    expect([...gas.sheets.keys()]).toEqual(['Sarees', 'Purchases', 'Bill lines', 'Vendors', 'Saree types', 'People', 'Settings', 'Counters', 'Log'])
+    expect([...gas.sheets.keys()]).toEqual(['Sarees', 'Purchases', 'Bill lines', 'Sales', 'Sale lines', 'Expenses', 'Vendors', 'Saree types', 'People', 'Settings', 'Counters', 'Log'])
     expect(gas.sheets.get('Saree types')!.table()[1]).toEqual(['KAN', 'Kanjeevaram'])
     expect(KEY).toMatch(/^[0-9a-f]{32}$/)
     expect(ctx.setup()).toBe(KEY) // running again keeps the key
@@ -130,6 +130,57 @@ describe('changes from phones', () => {
     expect(del.state.items.every((i: { deleted: boolean }) => i.deleted)).toBe(true)
     const back = call({ action: 'ops', ops: [env({ t: 'setPurchaseDeleted', id: 'P-2607-001', deleted: false })] })
     expect(back.state.items.every((i: { deleted: boolean }) => !i.deleted)).toBe(true)
+  })
+})
+
+describe('sales and expenses', () => {
+  const stamp = (by = 'u-j', at = Date.UTC(2026, 9, 4, 5, 30)) => ({ createdBy: by, createdAt: at, updatedBy: by, updatedAt: at })
+  const sale = (id: string, ids: string[], extra: Partial<Sale> = {}): Sale => ({
+    id, kind: 'stall', date: '2026-10-04', place: 'Jayanagar', customer: '', phone: '',
+    lines: ids.map((itemId) => ({ itemId, design: 'Durga', tag: 1350, price: 1250 })),
+    tagTotal: 1350 * ids.length, discount: 100 * ids.length, total: 1250 * ids.length, payment: 'upi', settledOn: '', note: '', ...stamp(), ...extra,
+  })
+  beforeEach(() => { call({ action: 'savePurchase', opId: 'p', draft: draft('royal-threads-OT001058.jpg'), by: 'u-j' }) })
+
+  it('a stall sale marks its sarees sold and reads back the same, in readable rows', () => {
+    const s = sale('S-261004-J01', ['VIS-2609-001', 'VIS-2609-002'])
+    const r = call({ action: 'ops', ops: [env({ t: 'saveSale', sale: s })] })
+    expect(r.state.sales).toEqual([s])
+    expect(call({ action: 'all' }).state.sales).toEqual([{ ...s, deleted: false }])
+    expect(r.state.items.filter((i: { status: string }) => i.status === 'sold').map((i: { id: string }) => i.id)).toEqual(['VIS-2609-001', 'VIS-2609-002'])
+    const row = gas.sheets.get('Sales')!.table()[1]
+    expect(row.slice(0, 12)).toEqual(['S-261004-J01', '2026-10-04', 'Stall', 'Jayanagar', '', '', 2, 'VIS-2609-001, VIS-2609-002', 2700, 200, 2500, 'UPI'])
+    expect(gas.sheets.get('Sale lines')!.table()[2]).toEqual(['S-261004-J01', 2, 'VIS-2609-002', 'Durga', 1350, 1250])
+  })
+  it('pending family sale → paid later; cancelling puts sarees back in stock', () => {
+    const s = sale('F-2610-J01', ['VIS-2609-003'], { kind: 'family', customer: 'Lakshmi', payment: 'pending' })
+    call({ action: 'ops', ops: [env({ t: 'saveSale', sale: s })] })
+    let st = call({ action: 'ops', ops: [env({ t: 'settleSale', id: 'F-2610-J01', payment: 'cash', on: '2026-10-20' })] }).state
+    expect(st.sales[0]).toMatchObject({ payment: 'cash', settledOn: '2026-10-20' })
+    expect(st.items.find((i: { id: string }) => i.id === 'VIS-2609-003').status).toBe('family')
+    expect(gas.sheets.get('Sales')!.table()[1][2]).toBe('Family')
+    st = call({ action: 'ops', ops: [env({ t: 'setSaleDeleted', id: 'F-2610-J01', deleted: true })] }).state
+    expect(st.sales[0].deleted).toBe(true)
+    expect(st.items.find((i: { id: string }) => i.id === 'VIS-2609-003').status).toBe('unpriced')
+  })
+  it('the same sale number from two phones gets the next free number instead of overwriting', () => {
+    const a = sale('S-261004-J01', ['VIS-2609-001'])
+    const b = { ...sale('S-261004-J01', ['VIS-2609-004']), ...stamp('u-j', Date.UTC(2026, 9, 4, 6)) }
+    const st = call({ action: 'ops', ops: [env({ t: 'saveSale', sale: a }), env({ t: 'saveSale', sale: b })] }).state
+    expect(st.sales.map((x: Sale) => x.id)).toEqual(['S-261004-J01', 'S-261004-J02'])
+  })
+  it('expenses round-trip with the receipt photo link', () => {
+    const e = { id: 'E-2610-J01', date: '2026-10-04', category: 'Stall rent', amount: 500, note: 'Sunday', photoRefs: ['abc123'], ...stamp() }
+    const st = call({ action: 'ops', ops: [env({ t: 'saveExpense', e })] }).state
+    expect(st.expenses).toEqual([e])
+    expect(call({ action: 'all' }).state.expenses).toEqual([{ ...e, deleted: false }])
+    expect(gas.sheets.get('Expenses')!.table()[1].slice(0, 6)).toEqual(['E-2610-J01', '2026-10-04', 'Stall rent', 500, 'Sunday', 'https://drive.google.com/file/d/abc123/view'])
+    const del = call({ action: 'ops', ops: [env({ t: 'setExpenseDeleted', id: 'E-2610-J01', deleted: true })] }).state
+    expect(del.expenses[0].deleted).toBe(true)
+  })
+  it('refuses a change it does not know, without writing anything', () => {
+    const r = call({ action: 'ops', ops: [env({ t: 'teleport' } as unknown as Envelope['op'])] })
+    expect(r.error).toMatch(/latest Code.gs/)
   })
 })
 

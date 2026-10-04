@@ -224,3 +224,14 @@ details > summary { cursor: pointer; padding: 6px 0; font-weight: 600; }
 .ids { display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .ids > span { white-space: nowrap; }
 .line-err { font-size: 0.85rem; color: var(--err); }
+
+/* Selling */
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button.rowlink.pick { width: 100%; background: none; border: 0; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+button.rowlink.pick:disabled { opacity: 0.55; cursor: not-allowed; }
+.segmented.wrap { flex-wrap: wrap; overflow: visible; }
+.input.total { font-size: 1.25rem; font-weight: 700; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.stats > div { display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 10px; background: var(--sunken); min-width: 0; }
+.stats b { font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 480px) { .stats { grid-template-columns: 1fr 1fr; } }

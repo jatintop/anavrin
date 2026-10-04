@@ -3,10 +3,12 @@
 import golden from '../../golden/expected.json'
 import { normalizeBill, taxTotal } from '../lib/bill'
 import { buildPurchase, draftLinesFromBill } from '../lib/purchase'
+import { applyOp, newOpId, type Op } from '../lib/ops'
+import { expenseId, familyId, saleId, todayIso } from '../lib/ids'
 import { kvClear, kvGet, kvSet } from './idb'
 import { EMPTY, type AuthInfo, type Repo } from './repo'
 import { DEFAULT_SETTINGS, DEFAULT_TYPES, DEFAULT_VENDORS } from './seed'
-import type { AppUser, DataState, PurchaseDraft } from './types'
+import type { AppUser, DataState, PurchaseDraft, Sale } from './types'
 
 interface Stored extends Omit<DataState, 'ready'> {
   counters: Record<string, number>
@@ -22,7 +24,7 @@ function sampleState(): Stored {
   const owner: AppUser = { id: 'u-jatin', name: 'Jatin', initial: 'J' }
   let s: Stored = {
     users: [owner], vendors: DEFAULT_VENDORS, types: DEFAULT_TYPES, settings: DEFAULT_SETTINGS,
-    purchases: [], items: [], counters: {},
+    purchases: [], items: [], sales: [], expenses: [], counters: {},
   }
   // Two of the real sample bills, already entered, so Stock and Price & Label have something in them.
   const g = golden as Record<string, unknown>
@@ -41,7 +43,22 @@ function sampleState(): Stored {
     const items = n === 1 ? out.items.map((i) => ({ ...i, price: Math.ceil((i.cost * 1.6) / 50) * 50, status: 'in_stock' as const })) : out.items
     s = { ...s, purchases: [out.purchase, ...s.purchases], items: [...s.items, ...items], counters: out.counters }
   })
-  return s
+  // A stall sale today, a family sale still to be paid, and an expense, so those screens aren't empty.
+  const today = todayIso()
+  const priced = s.items.filter((i) => i.status === 'in_stock')
+  const stamp = { createdBy: owner.id, createdAt: Date.now() - 3600000, updatedBy: owner.id, updatedAt: Date.now() - 3600000 }
+  const sale = (id: string, kind: Sale['kind'], n: number, extra: Partial<Sale>): Sale => {
+    const lines = priced.slice(n, n + 1).map((i) => ({ itemId: i.id, design: i.design, tag: i.price!, price: i.price! - 100 }))
+    const tagTotal = lines.reduce((a, l) => a + l.tag, 0)
+    return { id, kind, date: today, place: '', customer: '', phone: '', lines, tagTotal, discount: 100 * lines.length, total: tagTotal - 100 * lines.length,
+      payment: 'cash', settledOn: '', note: '', ...stamp, ...extra }
+  }
+  const ops: Op[] = [
+    { t: 'saveSale', sale: sale(saleId(today, 'J', 1), 'stall', 0, { place: 'Sunday stall', payment: 'upi' }) },
+    { t: 'saveSale', sale: sale(familyId(today, 'J', 1), 'family', 1, { customer: 'Lakshmi aunty', payment: 'pending' }) },
+    { t: 'saveExpense', e: { id: expenseId(today, 'J', 1), date: today, category: 'Stall rent', amount: 500, note: 'Sunday stall', photoRefs: [], ...stamp } },
+  ]
+  return ops.reduce((st, op) => applyOp(st, { opId: newOpId(), by: owner.id, at: stamp.createdAt, op }), s)
 }
 
 export function createDemoRepo(): Repo {
@@ -51,7 +68,8 @@ export function createDemoRepo(): Repo {
   const photoUrls = new Map<string, string>()
 
   const load = (async () => {
-    state = (await kvGet<Stored>('state')) ?? sampleState()
+    const saved = await kvGet<Stored>('state')
+    state = saved ? { ...saved, sales: saved.sales ?? [], expenses: saved.expenses ?? [] } : sampleState() // demos saved before sales existed
     emit()
   })()
 
@@ -68,6 +86,7 @@ export function createDemoRepo(): Repo {
     await kvSet('state', next)
   }
   const cur = async () => { await load; return state! }
+  const apply = async (op: Op, by: AppUser) => commit(applyOp(await cur(), { opId: newOpId(), by: by.id, at: Date.now(), op }))
   const auth = (): AuthInfo | null => {
     const id = lsGet(ME_KEY)
     return id ? { uid: id, email: null, displayName: null } : null
@@ -140,6 +159,11 @@ export function createDemoRepo(): Repo {
       const now = Date.now()
       await commit({ ...s, items: s.items.map((i) => (set.has(i.id) ? { ...i, ...patch, updatedBy: by.id, updatedAt: now } : i)) })
     },
+    saveSale: (sale, by) => apply({ t: 'saveSale', sale }, by),
+    setSaleDeleted: (id, deleted, by) => apply({ t: 'setSaleDeleted', id, deleted }, by),
+    settleSale: (id, payment, on, by) => apply({ t: 'settleSale', id, payment, on }, by),
+    saveExpense: (e, by) => apply({ t: 'saveExpense', e }, by),
+    setExpenseDeleted: (id, deleted, by) => apply({ t: 'setExpenseDeleted', id, deleted }, by),
     async savePhoto(blob) {
       const ref = `photo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       await kvSet(ref, blob)

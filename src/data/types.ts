@@ -74,6 +74,54 @@ export interface Purchase {
   updatedAt: number
 }
 
+export type SaleKind = 'stall' | 'family'
+export type PayMethod = 'upi' | 'cash' | 'pending'
+
+export interface SaleLine {
+  itemId: string
+  design: string
+  tag: number // price on the tag
+  price: number // what this saree actually sold for
+}
+
+export interface Sale {
+  id: string // S-261004-P07 (stall) or F-2610-P08 (family)
+  kind: SaleKind
+  date: string
+  place: string // stall / event name (stall sales)
+  customer: string // who bought it; needed when payment is pending
+  phone: string
+  lines: SaleLine[]
+  tagTotal: number
+  discount: number // tagTotal − total
+  total: number
+  payment: PayMethod // 'pending' until the money comes in
+  settledOn: string // date a pending sale was paid; '' otherwise
+  note: string
+  deleted?: boolean
+  createdBy: string
+  createdAt: number
+  updatedBy: string
+  updatedAt: number
+}
+
+export interface Expense {
+  id: string // E-2610-P31
+  date: string
+  category: string
+  amount: number
+  note: string
+  photoRefs: string[]
+  deleted?: boolean
+  createdBy: string
+  createdAt: number
+  updatedBy: string
+  updatedAt: number
+}
+
+export const EXPENSE_CATEGORIES = ['Stall rent', 'Travel', 'Packing', 'Food', 'Printing & tags', 'Other']
+export const PAY_LABEL: Record<PayMethod, string> = { upi: 'UPI', cash: 'Cash', pending: 'Pending' }
+
 export type DraftLine = BillLine & { type: string }
 
 export interface PurchaseDraft {
@@ -113,6 +161,8 @@ export interface DataState {
   settings: Settings
   purchases: Purchase[]
   items: Item[]
+  sales: Sale[]
+  expenses: Expense[]
 }
 
 export const STATUS_LABEL: Record<ItemStatus, string> = {

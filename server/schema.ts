@@ -1,17 +1,19 @@
 // How each kind of record is laid out as a tab in the Google Sheet.
 // Headers are written for people reading the sheet; `key` is the field name in the app.
 import type { AdjustmentReason, DocType } from '../src/lib/bill'
-import type { AppUser, Item, ItemStatus, Purchase, PurchaseLine, SareeType, Settings, Vendor } from '../src/data/types'
-import { STATUS_LABEL } from '../src/data/types'
+import type { AppUser, Item, ItemStatus, Purchase, PurchaseLine, Sale, SaleLine, SareeType, Settings, Vendor } from '../src/data/types'
+import { PAY_LABEL, STATUS_LABEL } from '../src/data/types'
 
-export type Kind = 'text' | 'num' | 'bool' | 'time' | 'status' | 'doctype' | 'list' | 'photos'
-export interface Col { key: string; header: string; kind: Kind; width?: number }
+export type Kind = 'text' | 'num' | 'bool' | 'time' | 'status' | 'doctype' | 'list' | 'photos' | 'label'
+/** `labels`: app value → what the sheet shows (kind 'label') */
+export interface Col { key: string; header: string; kind: Kind; width?: number; labels?: Record<string, string> }
 export interface Table { name: string; cols: Col[] }
 
 const T = (key: string, header: string, width?: number): Col => ({ key, header, kind: 'text', width })
 const N = (key: string, header: string): Col => ({ key, header, kind: 'num', width: 90 })
 const B = (key: string, header: string): Col => ({ key, header, kind: 'bool', width: 80 })
 const TM = (key: string, header: string): Col => ({ key, header, kind: 'time', width: 130 })
+const L = (key: string, header: string, labels: Record<string, string>): Col => ({ key, header, kind: 'label', width: 90, labels })
 
 export const ITEMS: Table = {
   name: 'Sarees',
@@ -51,7 +53,32 @@ export const SETTINGS: Table = { name: 'Settings', cols: [B('gstRegistered', 'GS
 export const COUNTERS: Table = { name: 'Counters', cols: [T('key', 'Counter', 160), N('n', 'Last number')] }
 export const LOG: Table = { name: 'Log', cols: [T('opId', 'Change ID', 240), TM('at', 'When'), T('by', 'Who', 90), T('action', 'What', 140), T('summary', 'Details', 360)] }
 
-export const ALL_TABLES = [ITEMS, PURCHASES, LINES, VENDORS, TYPES, PEOPLE, SETTINGS, COUNTERS, LOG]
+export const SALES: Table = {
+  name: 'Sales',
+  cols: [
+    T('id', 'Sale', 130), T('date', 'Date', 100), L('kind', 'Kind', { stall: 'Stall', family: 'Family' }), T('place', 'Stall / place', 160),
+    T('customer', 'Customer', 140), T('phone', 'Phone', 110), N('qty', 'Sarees'), { key: 'itemIds', header: 'Saree IDs', kind: 'list', width: 260 },
+    N('tagTotal', 'Tag total ₹'), N('discount', 'Discount ₹'), N('total', 'Total ₹'), L('payment', 'Payment', PAY_LABEL),
+    T('settledOn', 'Dues paid on', 100), T('note', 'Note', 180), B('deleted', 'Cancelled'),
+    T('createdBy', 'Added by', 90), TM('createdAt', 'Added at'), T('updatedBy', 'Changed by', 90), TM('updatedAt', 'Changed at'),
+  ],
+}
+
+export const SALE_LINES: Table = {
+  name: 'Sale lines',
+  cols: [T('saleId', 'Sale', 130), N('lineNo', 'Line'), T('itemId', 'Saree ID', 120), T('design', 'Design', 180), N('tag', 'Tag price ₹'), N('price', 'Sold for ₹')],
+}
+
+export const EXPENSES: Table = {
+  name: 'Expenses',
+  cols: [
+    T('id', 'Expense', 120), T('date', 'Date', 100), T('category', 'Type', 130), N('amount', 'Amount ₹'), T('note', 'Note', 220),
+    { key: 'photoRefs', header: 'Receipt photo', kind: 'photos', width: 220 }, B('deleted', 'Deleted'),
+    T('createdBy', 'Added by', 90), TM('createdAt', 'Added at'), T('updatedBy', 'Changed by', 90), TM('updatedAt', 'Changed at'),
+  ],
+}
+
+export const ALL_TABLES = [ITEMS, PURCHASES, LINES, SALES, SALE_LINES, EXPENSES, VENDORS, TYPES, PEOPLE, SETTINGS, COUNTERS, LOG]
 
 // ---------- value conversion ----------
 const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -75,8 +102,9 @@ const DOC_LABEL: Record<DocType, string> = { tax_invoice: 'Tax invoice', quotati
 const LABEL_TO_DOC = Object.fromEntries(Object.entries(DOC_LABEL).map(([k, v]) => [v.toLowerCase(), k])) as Record<string, DocType>
 export const driveUrl = (id: string) => `https://drive.google.com/file/d/${id}/view`
 
-export function toCell(kind: Kind, v: unknown): string | number | boolean {
+export function toCell(kind: Kind, v: unknown, labels?: Record<string, string>): string | number | boolean {
   switch (kind) {
+    case 'label': return labels?.[String(v)] ?? String(v ?? '')
     case 'num': return v == null || v === '' ? '' : Number(v)
     case 'bool': return v === true
     case 'time': return typeof v === 'number' && v > 0 ? fmtTime(v) : ''
@@ -88,8 +116,12 @@ export function toCell(kind: Kind, v: unknown): string | number | boolean {
   }
 }
 
-export function fromCell(kind: Kind, v: unknown): unknown {
+export function fromCell(kind: Kind, v: unknown, labels?: Record<string, string>): unknown {
   switch (kind) {
+    case 'label': {
+      const t = String(v ?? '').trim().toLowerCase()
+      return Object.entries(labels ?? {}).find(([k, l]) => l.toLowerCase() === t || k === t)?.[0] ?? t
+    }
     case 'num': return v === '' || v == null ? null : Number(v)
     case 'bool': return v === true || String(v).toUpperCase() === 'TRUE'
     case 'time': return parseTime(v)
@@ -105,9 +137,9 @@ export function fromCell(kind: Kind, v: unknown): unknown {
 }
 
 export const rowToRecord = (t: Table, row: unknown[]): Record<string, unknown> =>
-  Object.fromEntries(t.cols.map((c, i) => [c.key, fromCell(c.kind, row[i])]))
+  Object.fromEntries(t.cols.map((c, i) => [c.key, fromCell(c.kind, row[i], c.labels)]))
 export const recordToRow = (t: Table, r: Record<string, unknown>): (string | number | boolean)[] =>
-  t.cols.map((c) => toCell(c.kind, r[c.key]))
+  t.cols.map((c) => toCell(c.kind, r[c.key], c.labels))
 
 // ---------- record shapes ----------
 export const itemFromRec = (r: Record<string, unknown>): Item => ({ ...(r as unknown as Item), deleted: r.deleted === true })
@@ -127,4 +159,14 @@ export const lineToRec = (purchaseId: string, l: PurchaseLine, i: number) => ({ 
 export function lineFromRec(r: Record<string, unknown>): PurchaseLine & { purchaseId: string; lineNo: number } {
   return r as unknown as PurchaseLine & { purchaseId: string; lineNo: number }
 }
+export function saleToRec(s: Sale): Record<string, unknown> {
+  const { lines, ...rest } = s
+  return { ...rest, qty: lines.length, itemIds: lines.map((l) => l.itemId) }
+}
+export function saleFromRec(r: Record<string, unknown>, lines: SaleLine[]): Sale {
+  const { qty: _q, itemIds: _i, ...rest } = r
+  return { ...(rest as unknown as Sale), deleted: r.deleted === true, lines }
+}
+export const saleLineToRec = (saleId: string, l: SaleLine, i: number) => ({ ...l, saleId, lineNo: i + 1 })
+
 export type { AppUser, SareeType, Settings, Vendor }

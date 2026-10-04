@@ -169,6 +169,26 @@ Rules:
     const k = key(x);
     return xs.some((y) => key(y) === k) ? xs.map((y) => key(y) === k ? x : y) : [...xs, x];
   };
+  function nextFreeId(id, taken) {
+    const m = id.match(/^(.*?)(\d+)$/);
+    if (!m) {
+      let k = 2;
+      while (taken.has(`${id}-${k}`)) k++;
+      return `${id}-${k}`;
+    }
+    let n = Number(m[2]);
+    let out = id;
+    while (taken.has(out)) out = m[1] + String(++n).padStart(m[2].length, "0");
+    return out;
+  }
+  function placeNew(xs, x) {
+    const same = xs.find((y) => y.id === x.id);
+    if (!same) return { list: [...xs, x], rec: x };
+    if (same.createdBy === x.createdBy && Math.floor(same.createdAt / 1e3) === Math.floor(x.createdAt / 1e3)) return { list: xs.map((y) => y.id === x.id ? x : y), rec: x };
+    const rec = { ...x, id: nextFreeId(x.id, new Set(xs.map((y) => y.id))) };
+    return { list: [...xs, rec], rec };
+  }
+  var soldStatus = (s) => s.kind === "family" ? "family" : "sold";
   function applyOp(s, e) {
     const { op, by, at } = e;
     switch (op.t) {
@@ -194,6 +214,40 @@ Rules:
         const ids = new Set(op.ids);
         return { ...s, items: s.items.map((i) => ids.has(i.id) ? { ...i, ...op.patch, updatedBy: by, updatedAt: at } : i) };
       }
+      case "saveSale": {
+        const { list } = placeNew(s.sales, op.sale);
+        const ids = new Set(op.sale.lines.map((l) => l.itemId));
+        const st = soldStatus(op.sale);
+        return { ...s, sales: list, items: s.items.map((i) => ids.has(i.id) ? { ...i, status: st, updatedBy: by, updatedAt: at } : i) };
+      }
+      case "setSaleDeleted": {
+        const sale = s.sales.find((x) => x.id === op.id);
+        if (!sale || !!sale.deleted === op.deleted) return s;
+        const ids = new Set(sale.lines.map((l) => l.itemId));
+        const st = soldStatus(sale);
+        return {
+          ...s,
+          sales: s.sales.map((x) => x.id === op.id ? { ...x, deleted: op.deleted, updatedBy: by, updatedAt: at } : x),
+          items: s.items.map((i) => {
+            if (!ids.has(i.id)) return i;
+            if (op.deleted && i.status !== st) return i;
+            const status = op.deleted ? i.price != null ? "in_stock" : "unpriced" : st;
+            return { ...i, status, updatedBy: by, updatedAt: at };
+          })
+        };
+      }
+      case "settleSale":
+        return {
+          ...s,
+          sales: s.sales.map((x) => x.id === op.id && x.payment === "pending" ? { ...x, payment: op.payment, settledOn: op.on, updatedBy: by, updatedAt: at } : x)
+        };
+      case "saveExpense":
+        return { ...s, expenses: placeNew(s.expenses, op.e).list };
+      case "setExpenseDeleted":
+        return {
+          ...s,
+          expenses: s.expenses.map((x) => x.id === op.id ? { ...x, deleted: op.deleted, updatedBy: by, updatedAt: at } : x)
+        };
     }
   }
 
@@ -289,6 +343,7 @@ Rules:
   var DEFAULT_SETTINGS = { gstRegistered: false, markupPct: 60, roundTo: 50 };
 
   // src/data/types.ts
+  var PAY_LABEL = { upi: "UPI", cash: "Cash", pending: "Pending" };
   var STATUS_LABEL = {
     unpriced: "Needs price",
     in_stock: "In stock",
@@ -302,6 +357,7 @@ Rules:
   var N = (key, header) => ({ key, header, kind: "num", width: 90 });
   var B = (key, header) => ({ key, header, kind: "bool", width: 80 });
   var TM = (key, header) => ({ key, header, kind: "time", width: 130 });
+  var L = (key, header, labels) => ({ key, header, kind: "label", width: 90, labels });
   var ITEMS = {
     name: "Sarees",
     cols: [
@@ -371,7 +427,51 @@ Rules:
   var SETTINGS = { name: "Settings", cols: [B("gstRegistered", "GST registered"), N("markupPct", "Markup %"), N("roundTo", "Round prices to ₹")] };
   var COUNTERS = { name: "Counters", cols: [T("key", "Counter", 160), N("n", "Last number")] };
   var LOG = { name: "Log", cols: [T("opId", "Change ID", 240), TM("at", "When"), T("by", "Who", 90), T("action", "What", 140), T("summary", "Details", 360)] };
-  var ALL_TABLES = [ITEMS, PURCHASES, LINES, VENDORS, TYPES, PEOPLE, SETTINGS, COUNTERS, LOG];
+  var SALES = {
+    name: "Sales",
+    cols: [
+      T("id", "Sale", 130),
+      T("date", "Date", 100),
+      L("kind", "Kind", { stall: "Stall", family: "Family" }),
+      T("place", "Stall / place", 160),
+      T("customer", "Customer", 140),
+      T("phone", "Phone", 110),
+      N("qty", "Sarees"),
+      { key: "itemIds", header: "Saree IDs", kind: "list", width: 260 },
+      N("tagTotal", "Tag total ₹"),
+      N("discount", "Discount ₹"),
+      N("total", "Total ₹"),
+      L("payment", "Payment", PAY_LABEL),
+      T("settledOn", "Dues paid on", 100),
+      T("note", "Note", 180),
+      B("deleted", "Cancelled"),
+      T("createdBy", "Added by", 90),
+      TM("createdAt", "Added at"),
+      T("updatedBy", "Changed by", 90),
+      TM("updatedAt", "Changed at")
+    ]
+  };
+  var SALE_LINES = {
+    name: "Sale lines",
+    cols: [T("saleId", "Sale", 130), N("lineNo", "Line"), T("itemId", "Saree ID", 120), T("design", "Design", 180), N("tag", "Tag price ₹"), N("price", "Sold for ₹")]
+  };
+  var EXPENSES = {
+    name: "Expenses",
+    cols: [
+      T("id", "Expense", 120),
+      T("date", "Date", 100),
+      T("category", "Type", 130),
+      N("amount", "Amount ₹"),
+      T("note", "Note", 220),
+      { key: "photoRefs", header: "Receipt photo", kind: "photos", width: 220 },
+      B("deleted", "Deleted"),
+      T("createdBy", "Added by", 90),
+      TM("createdAt", "Added at"),
+      T("updatedBy", "Changed by", 90),
+      TM("updatedAt", "Changed at")
+    ]
+  };
+  var ALL_TABLES = [ITEMS, PURCHASES, LINES, SALES, SALE_LINES, EXPENSES, VENDORS, TYPES, PEOPLE, SETTINGS, COUNTERS, LOG];
   var pad2 = (n) => String(n).padStart(2, "0");
   function fmtTime(ms) {
     const d = new Date(ms);
@@ -392,9 +492,11 @@ Rules:
   var DOC_LABEL = { tax_invoice: "Tax invoice", quotation: "Quotation", estimate: "Estimate", other: "Other" };
   var LABEL_TO_DOC = Object.fromEntries(Object.entries(DOC_LABEL).map(([k, v]) => [v.toLowerCase(), k]));
   var driveUrl = (id) => `https://drive.google.com/file/d/${id}/view`;
-  function toCell(kind, v) {
-    var _a, _b;
+  function toCell(kind, v, labels) {
+    var _a, _b, _c;
     switch (kind) {
+      case "label":
+        return (_a = labels == null ? void 0 : labels[String(v)]) != null ? _a : String(v != null ? v : "");
       case "num":
         return v == null || v === "" ? "" : Number(v);
       case "bool":
@@ -402,9 +504,9 @@ Rules:
       case "time":
         return typeof v === "number" && v > 0 ? fmtTime(v) : "";
       case "status":
-        return (_a = STATUS_LABEL[v]) != null ? _a : String(v != null ? v : "");
+        return (_b = STATUS_LABEL[v]) != null ? _b : String(v != null ? v : "");
       case "doctype":
-        return (_b = DOC_LABEL[v]) != null ? _b : "Other";
+        return (_c = DOC_LABEL[v]) != null ? _c : "Other";
       case "list":
         return Array.isArray(v) ? v.join(", ") : "";
       case "photos":
@@ -413,9 +515,13 @@ Rules:
         return v == null ? "" : String(v);
     }
   }
-  function fromCell(kind, v) {
-    var _a, _b;
+  function fromCell(kind, v, labels) {
+    var _a, _b, _c, _d;
     switch (kind) {
+      case "label": {
+        const t = String(v != null ? v : "").trim().toLowerCase();
+        return (_b = (_a = Object.entries(labels != null ? labels : {}).find(([k, l]) => l.toLowerCase() === t || k === t)) == null ? void 0 : _a[0]) != null ? _b : t;
+      }
       case "num":
         return v === "" || v == null ? null : Number(v);
       case "bool":
@@ -424,10 +530,10 @@ Rules:
         return parseTime(v);
       case "status": {
         const s = String(v != null ? v : "").trim();
-        return (_a = LABEL_TO_STATUS[s.toLowerCase()]) != null ? _a : s in STATUS_LABEL ? s : "in_stock";
+        return (_c = LABEL_TO_STATUS[s.toLowerCase()]) != null ? _c : s in STATUS_LABEL ? s : "in_stock";
       }
       case "doctype":
-        return (_b = LABEL_TO_DOC[String(v != null ? v : "").toLowerCase()]) != null ? _b : "other";
+        return (_d = LABEL_TO_DOC[String(v != null ? v : "").toLowerCase()]) != null ? _d : "other";
       case "list":
         return String(v != null ? v : "").split(/[,\s]+/).filter(Boolean);
       case "photos":
@@ -439,8 +545,8 @@ Rules:
         return dateText(v);
     }
   }
-  var rowToRecord = (t, row) => Object.fromEntries(t.cols.map((c, i) => [c.key, fromCell(c.kind, row[i])]));
-  var recordToRow = (t, r) => t.cols.map((c) => toCell(c.kind, r[c.key]));
+  var rowToRecord = (t, row) => Object.fromEntries(t.cols.map((c, i) => [c.key, fromCell(c.kind, row[i], c.labels)]));
+  var recordToRow = (t, r) => t.cols.map((c) => toCell(c.kind, r[c.key], c.labels));
   var itemFromRec = (r) => ({ ...r, deleted: r.deleted === true });
   function purchaseToRec(p) {
     var _a, _b;
@@ -459,6 +565,15 @@ Rules:
   function lineFromRec(r) {
     return r;
   }
+  function saleToRec(s) {
+    const { lines, ...rest } = s;
+    return { ...rest, qty: lines.length, itemIds: lines.map((l) => l.itemId) };
+  }
+  function saleFromRec(r, lines) {
+    const { qty: _q, itemIds: _i, ...rest } = r;
+    return { ...rest, deleted: r.deleted === true, lines };
+  }
+  var saleLineToRec = (saleId, l, i) => ({ ...l, saleId, lineNo: i + 1 });
 
   // server/main.ts
   var FORMAT = { num: "#,##0.##", bool: "General" };
@@ -528,8 +643,23 @@ Rules:
         const ls = ((_a = byPurchase.get(String(r.id))) != null ? _a : []).sort((a, b) => a.lineNo - b.lineNo);
         return purchaseFromRec(r, ls.map(({ purchaseId: _p, lineNo: _n, ...l }) => l));
       }),
-      items: readTable(ITEMS).map(itemFromRec)
+      items: readTable(ITEMS).map(itemFromRec),
+      sales: readSales(),
+      expenses: readTable(EXPENSES).map((r) => ({ ...r, deleted: r.deleted === true }))
     };
+  }
+  function readSales() {
+    const bySale = /* @__PURE__ */ new Map();
+    readTable(SALE_LINES).forEach((r) => {
+      var _a;
+      const { saleId, ...l } = r;
+      bySale.set(saleId, [...(_a = bySale.get(saleId)) != null ? _a : [], l]);
+    });
+    return readTable(SALES).map((r) => {
+      var _a;
+      const ls = ((_a = bySale.get(String(r.id))) != null ? _a : []).sort((a, b) => a.lineNo - b.lineNo);
+      return saleFromRec(r, ls.map(({ lineNo: _n, ...l }) => l));
+    });
   }
   var TOUCHES = {
     saveUser: ["users"],
@@ -539,7 +669,12 @@ Rules:
     deleteType: ["types"],
     saveSettings: ["settings"],
     setPurchaseDeleted: ["purchases", "items"],
-    updateItems: ["items"]
+    updateItems: ["items"],
+    saveSale: ["sales", "items"],
+    setSaleDeleted: ["sales", "items"],
+    settleSale: ["sales"],
+    saveExpense: ["expenses"],
+    setExpenseDeleted: ["expenses"]
   };
   function writeTables(s, which) {
     if (which.has("users")) writeAll(PEOPLE, s.users);
@@ -548,6 +683,11 @@ Rules:
     if (which.has("settings")) writeAll(SETTINGS, [s.settings]);
     if (which.has("purchases")) writeAll(PURCHASES, s.purchases.map(purchaseToRec));
     if (which.has("items")) writeAll(ITEMS, s.items);
+    if (which.has("sales")) {
+      writeAll(SALES, s.sales.map(saleToRec));
+      writeAll(SALE_LINES, s.sales.flatMap((x) => x.lines.map((l, i) => saleLineToRec(x.id, l, i))));
+    }
+    if (which.has("expenses")) writeAll(EXPENSES, s.expenses);
   }
   function loggedIds() {
     const sh = tab(LOG);
@@ -573,6 +713,18 @@ Rules:
         return op.code;
       case "saveSettings":
         return JSON.stringify(op.s);
+      case "saveSale":
+        return `${op.sale.id} ${op.sale.kind} ₹${op.sale.total} ${op.sale.payment}${op.sale.customer ? ` · ${op.sale.customer}` : ""} — ${op.sale.lines.map((l) => l.itemId).join(", ")}`;
+      case "setSaleDeleted":
+        return `${op.id} ${op.deleted ? "cancelled" : "restored"}`;
+      case "settleSale":
+        return `${op.id} paid by ${op.payment} on ${op.on}`;
+      case "saveExpense":
+        return `${op.e.id} ${op.e.category} ₹${op.e.amount}${op.e.note ? ` · ${op.e.note}` : ""}`;
+      case "setExpenseDeleted":
+        return `${op.id} ${op.deleted ? "deleted" : "restored"}`;
+      default:
+        return "";
     }
   }
   function applyOps(envs) {
@@ -584,6 +736,7 @@ Rules:
     for (const e of envs) {
       applied.push(e.opId);
       if (done.has(e.opId)) continue;
+      if (!TOUCHES[e.op.t]) throw new Error(`This server doesn’t know the change “${e.op.t}”. Paste the latest Code.gs into Apps Script and deploy a new version.`);
       s = applyOp(s, e);
       TOUCHES[e.op.t].forEach((k) => touched.add(k));
       done.add(e.opId);

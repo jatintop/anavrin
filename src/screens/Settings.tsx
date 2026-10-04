@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { inviteLink } from '../data/connection'
-import { setDemoChosen } from './Connect'
+import { exitDemo } from '../data/demoMode'
 import { Link } from 'react-router-dom'
 import { useData, useMe, useRepo } from '../data/repo'
 import type { Settings as S, Vendor } from '../data/types'
@@ -43,7 +43,7 @@ export function Settings() {
           <section className="panel stack">
             <h2>Google Sheet</h2>
             <p className="small muted">This is the demo. Connect to the family’s Google Sheet to start using the app for real.</p>
-            <button className="btn primary" onClick={() => { setDemoChosen(false); location.reload() }}>Connect to Google Sheet</button>
+            <button className="btn primary" onClick={exitDemo}>Exit demo · enter family key</button>
           </section>
         )}
 

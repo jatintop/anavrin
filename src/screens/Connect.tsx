@@ -2,10 +2,7 @@ import { useState } from 'react'
 import { DEFAULT_URL, decodeInvite, saveConnection, validUrl, type Connection } from '../data/connection'
 import { createApi } from '../data/sheetsRepo'
 import { Field } from '../ui'
-
-const DEMO_KEY = 'anavrin-use-demo'
-export const demoChosen = () => { try { return localStorage.getItem(DEMO_KEY) === '1' } catch { return false } }
-export const setDemoChosen = (on: boolean) => { try { if (on) localStorage.setItem(DEMO_KEY, '1'); else localStorage.removeItem(DEMO_KEY) } catch { /* blocked */ } }
+import { setDemoChosen } from '../data/demoMode'
 
 /** First screen on a new phone: connect to the family's Google Sheet, or try the demo. */
 export function Connect() {

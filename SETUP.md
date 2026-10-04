@@ -32,7 +32,7 @@ On the free tier Google may use what you send (the bill photos) to improve its m
 6. Back in the editor, choose **setup** in the function list at the top → **Run**.
    - Google asks for permission. It will say "Google hasn't verified this app" because it's your own script: **Advanced → Go to Anavrin (unsafe) → Allow**.
    - The log at the bottom shows **Family key: …**. Copy it.
-   - The sheet now has tabs: Sarees, Purchases, Bill lines, Vendors, Saree types, People, Settings, Counters, Log.
+   - The sheet now has tabs: Sarees, Purchases, Bill lines, Sales, Sale lines, Expenses, Vendors, Saree types, People, Settings, Counters, Log.
 7. **Deploy → New deployment** → gear → **Web app**:
    - Execute as: **Me**
    - Who has access: **Anyone**
@@ -71,6 +71,8 @@ Anyone with the invite link can see and change the data, so keep it in the famil
 ## Updating the server code later
 
 Paste the new `Code.gs`, then **Deploy → Manage deployments → ✏️ → Version: New version → Deploy**. The Web app URL stays the same, so phones keep working.
+New tabs (for example Sales and Expenses) are added to the sheet automatically the first time they're needed. If the app is
+updated before the server, phones say the server code is out of date and keep new sales on the phone until it's updated.
 
 ## Free limits (generous for a family business)
 

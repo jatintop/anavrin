@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useData, useRepo } from '../data/repo'
 import { Field } from '../ui'
+import { exitDemo } from '../data/demoMode'
 
 export function SignIn() {
   const repo = useRepo()
@@ -29,6 +30,10 @@ export function SignIn() {
       )}
 
       {adding && <ProfileForm onCancel={users.length ? () => setAdding(false) : undefined} />}
+
+      {repo.mode === 'demo' && !__DEMO__ && (
+        <button className="btn" onClick={exitDemo}>Exit demo · enter the family key instead</button>
+      )}
     </div>
   )
 }
